@@ -5,6 +5,46 @@
 #include <string.h>
 #include <time.h>
 
+int xip;
+char* filter;
+
+void getFilters(char** args, int argc){
+    if(argc > 3){
+        if(strcmp(args[3], "xip")){
+            xip = 1;
+            filter = args[4];
+        }
+        else{
+            xip = 0;
+            filter = args[4];
+        }
+    }
+    else{
+        xip = -1;
+    }
+}
+
+int checkarguments(char* line){
+    char copy[100];
+    const char s[2] = ",";
+    strcpy(copy, line);
+    char* arg4 = strtok(copy, s);
+    arg4 = strtok(NULL, s);
+    arg4 = strtok(NULL, s);
+    if(xip == 0){
+        if(strcmp(filter, arg4)){
+            return 0;
+        }
+    }
+    else if(xip > 0){
+        arg4 = strtok(NULL, s);
+        if(strcmp(strtok(arg4, "\n"), filter)){
+            return 0;
+        }
+    }
+    return 1;
+}
+
 int processLine(char* line, char* compare){
     const char s[2] = ",";
     char copy[100];
@@ -33,7 +73,6 @@ int processLine(char* line, char* compare){
     log_time.tm_min = atoi(buf1);
     buf1 = strtok(NULL, s3);
     log_time.tm_sec = atoi(buf1);
-    log_time.tm_isdst = -1;
 
     if(current_time > mktime(&log_time)){
         return -1;
@@ -42,12 +81,15 @@ int processLine(char* line, char* compare){
 }
 
 int main(int argc, char** args) {
+    xip = 0;
     int n;
     FILE *fptr;
     size_t len = 0;
     ssize_t read;
     struct stat s;
     char* buf = (char *)malloc(sizeof(char) * 100);
+    filter = malloc(100*sizeof(char));
+    getFilters(args, argc);
     
     if((fptr = fopen(args[1], "rb")) == NULL){
         printf("Error opening file\n");
@@ -61,10 +103,10 @@ int main(int argc, char** args) {
 
     int blocksize = s.st_blksize;
     int size = s.st_size;
-
-    int counter = -1;
     
-    fseek(fptr, counter*blocksize, SEEK_END);
+    int n_blocks = size/blocksize;
+    
+    fseek(fptr, blocksize*n_blocks, SEEK_SET);
     
     while(1) {
         if ((read = getline(&buf, &len, fptr)) != -1) {
@@ -74,8 +116,12 @@ int main(int argc, char** args) {
                 }
             }
         }
-        counter--;
-        fseek(fptr, counter*blocksize, SEEK_END);
+        
+        n_blocks--;
+        fseek(fptr, blocksize*n_blocks, SEEK_SET);
+        if(n_blocks == -1){
+            return 0;
+        }
     }
 
     while (processLine(buf, args[2]) < 0){
@@ -84,11 +130,15 @@ int main(int argc, char** args) {
             exit(1);
         }
     }
-    
-    printf("%s", buf);
+
+    if(checkarguments(buf)){
+        printf("%s", buf);
+    }
     
     while((read = getline(&buf, &len, fptr)) != -1){
-        printf("%s", buf);
+        if(checkarguments(buf)){
+            printf("%s", buf);
+        }
     }
 
     fclose(fptr);
