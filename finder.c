@@ -82,7 +82,6 @@ int processLine(char* line, char* compare){
 
 int main(int argc, char** args) {
     xip = 0;
-    int n;
     FILE *fptr;
     size_t len = 0;
     ssize_t read;
