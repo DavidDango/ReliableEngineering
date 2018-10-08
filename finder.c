@@ -74,7 +74,7 @@ int processLine(char* line, char* compare){
     buf1 = strtok(NULL, s3);
     log_time.tm_sec = atoi(buf1);
 
-    if(current_time > mktime(&log_time)){
+    if(current_time >= mktime(&log_time)){
         return -1;
     }
     return 1;
